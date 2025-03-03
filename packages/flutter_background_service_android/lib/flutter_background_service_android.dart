@@ -240,4 +240,8 @@ class AndroidServiceInstance extends ServiceInstance {
     final result = await _channel.invokeMethod('openApp');
     return result ?? false;
   }
+
+  Future<void> setSystemVolume(double volume) async {
+    await _channel.invokeMethod('setSystemVolume', volume);
+  }
 }

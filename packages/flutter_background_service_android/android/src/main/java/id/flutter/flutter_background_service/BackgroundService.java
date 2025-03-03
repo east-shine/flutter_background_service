@@ -16,6 +16,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.util.Log;
+import android.media.AudioManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -339,8 +340,28 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
 
                 }
                 return;
-
             }
+
+            if (method.equalsIgnoreCase("setSystemVolume")) {
+                try {
+                    android.media.AudioManager audioManager =
+                            (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
+                    if (audioManager != null) {
+                        double volume = (double) call.arguments;
+                        int maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+                        int setVolume = (int) Math.round(volume * maxVolume); // 0.0 ~ 1.0 값을 실제 볼륨 값으로 변환
+                        audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, setVolume, 0);
+                        result.success(null);
+                    } else {
+                        result.error("AUDIO_SERVICE_ERROR", "AudioManager is null", null);
+                    }
+                } catch (Exception e) {
+                    result.error("SET_VOLUME_ERROR", e.getMessage(), null);
+                }
+                return;
+            }
+
+
         } catch (JSONException e) {
             Log.e(TAG, e.getMessage());
             e.printStackTrace();
