@@ -16,7 +16,6 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.util.Log;
-import android.media.AudioManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -26,7 +25,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.flutter.FlutterInjector;
@@ -55,6 +57,13 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
     private String configForegroundTypes;
     private String[] foregroundTypes;
     private Handler mainHandler;
+    private final Pipe.PipeListener listener = new Pipe.PipeListener() {
+        @Override
+        public void onReceived(JSONObject object) {
+            receiveData(object);
+        }
+    };
+    private GeofencingService geofencingService;
 
     synchronized public static PowerManager.WakeLock getLock(Context context) {
         if (lockStatic == null) {
@@ -125,13 +134,6 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
         super.onDestroy();
     }
 
-    private final Pipe.PipeListener listener = new Pipe.PipeListener() {
-        @Override
-        public void onReceived(JSONObject object) {
-            receiveData(object);
-        }
-    };
-
     private void createNotificationChannel() {
         if (SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = "Background Service";
@@ -173,7 +175,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
                 Integer serviceType = ForegroundTypeMapper.getForegroundServiceType(foregroundTypes);
                 ServiceCompat.startForeground(this, notificationId, mBuilder.build(), serviceType);
             } catch (SecurityException e) {
-              Log.w(TAG, "Failed to start foreground service due to SecurityException - have you forgotten to request a permission? - " + e.getMessage());
+                Log.w(TAG, "Failed to start foreground service due to SecurityException - have you forgotten to request a permission? - " + e.getMessage());
             }
         }
     }
@@ -218,6 +220,9 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
 
             methodChannel = new MethodChannel(backgroundEngine.getDartExecutor().getBinaryMessenger(), "id.flutter/background_service_android_bg", JSONMethodCodec.INSTANCE);
             methodChannel.setMethodCallHandler(this);
+
+            geofencingService = new GeofencingService(this);
+            geofencingService.setMethodChannel(methodChannel);
 
             dartEntrypoint = new DartExecutor.DartEntrypoint(flutterLoader.findAppBundlePath(), "package:flutter_background_service_android/flutter_background_service_android.dart", "entrypoint");
 
@@ -312,7 +317,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
 
             if (method.equalsIgnoreCase("sendData")) {
                 try {
-                    if (FlutterBackgroundServicePlugin.mainPipe.hasListener()){
+                    if (FlutterBackgroundServicePlugin.mainPipe.hasListener()) {
                         FlutterBackgroundServicePlugin.mainPipe.invoke((JSONObject) call.arguments);
                     }
 
@@ -323,10 +328,10 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
                 return;
             }
 
-            if(method.equalsIgnoreCase("openApp")){
-                try{
-                    String packageName=  getPackageName();
-                    Intent launchIntent= getPackageManager().getLaunchIntentForPackage(packageName);
+            if (method.equalsIgnoreCase("openApp")) {
+                try {
+                    String packageName = getPackageName();
+                    Intent launchIntent = getPackageManager().getLaunchIntentForPackage(packageName);
                     if (launchIntent != null) {
                         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -335,8 +340,8 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
                         result.success(true);
 
                     }
-                }catch (Exception e){
-                    result.error("open app failure", e.getMessage(),e);
+                } catch (Exception e) {
+                    result.error("open app failure", e.getMessage(), e);
 
                 }
                 return;
@@ -361,6 +366,45 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
                 return;
             }
 
+            if (method.equalsIgnoreCase("registerGeofence")) {
+                try {
+                    JSONObject jsonArgs = (JSONObject) call.arguments;
+                    Map<String, Object> args = jsonToMap(jsonArgs);
+
+                    double latitude = ((Number) args.get("latitude")).doubleValue();
+                    double longitude = ((Number) args.get("longitude")).doubleValue();
+                    double radius = ((Number) args.get("radius")).doubleValue();
+                    String identifier = (String) args.get("identifier");
+
+                    geofencingService.registerGeofence(latitude, longitude, radius, identifier);
+                    result.success(null);
+                } catch (Exception e) {
+                    result.error("REGISTER_ERROR", e.getMessage(), null);
+                }
+                return;
+            }
+
+            if (method.equalsIgnoreCase("removeGeofence")) {
+                try {
+                    String identifier = (String) call.arguments;
+                    geofencingService.removeGeofence(identifier);
+                    result.success(null);
+                } catch (Exception e) {
+                    result.error("REMOVE_ERROR", e.getMessage(), null);
+                }
+                return;
+            }
+
+            if (method.equalsIgnoreCase("getRegisteredGeofences")) {
+                try {
+                    List<Map<String, Object>> geofences = geofencingService.getRegisteredGeofences();
+                    result.success(geofences);
+                } catch (Exception e) {
+                    result.error("GET_GEOFENCES_ERROR", e.getMessage(), null);
+                }
+                return;
+            }
+
 
         } catch (JSONException e) {
             Log.e(TAG, e.getMessage());
@@ -368,5 +412,15 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
         }
 
         result.notImplemented();
+    }
+
+    private Map<String, Object> jsonToMap(JSONObject jsonObject) throws Exception {
+        Map<String, Object> map = new HashMap<>();
+        Iterator<String> keys = jsonObject.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            map.put(key, jsonObject.get(key));
+        }
+        return map;
     }
 }

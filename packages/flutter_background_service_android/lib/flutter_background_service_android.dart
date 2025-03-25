@@ -244,4 +244,28 @@ class AndroidServiceInstance extends ServiceInstance {
   Future<void> setSystemVolume(double volume) async {
     await _channel.invokeMethod('setSystemVolume', volume);
   }
+
+  Future<void> addGeofenceRegion({
+    required String identifier,
+    required double latitude,
+    required double longitude,
+    required double radius,
+  }) async {
+    await _channel.invokeMethod("registerGeofence", {
+      "latitude": latitude,
+      "longitude": longitude,
+      "radius": radius,
+      "identifier": identifier,
+    });
+  }
+
+  Future<void> removeGeofenceRegion(String identifier) async {
+    await _channel.invokeMethod("removeGeofence", identifier);
+  }
+
+  Future<List<Map<String, dynamic>>> getRegisteredGeofences() async {
+    final List<dynamic>? result =
+        await _channel.invokeMethod('getRegisteredGeofences');
+    return result?.map((e) => Map<String, dynamic>.from(e)).toList() ?? [];
+  }
 }
