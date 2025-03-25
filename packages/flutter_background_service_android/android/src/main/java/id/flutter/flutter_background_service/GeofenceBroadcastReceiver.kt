@@ -42,7 +42,6 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             Log.d(TAG, "Triggering geofences: $triggeringGeofences, location: $location")
 
             if (triggeringGeofences != null && location != null) {
-                val geofencingService = GeofencingService(context)
                 for (geofence in triggeringGeofences) {
                     val locationData = mapOf(
                         "latitude" to location.latitude,
@@ -53,7 +52,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         "timestamp" to location.time / 1000.0
                     )
                     Log.d(TAG, "Geofence event for ${geofence.requestId} at location $locationData")
-                    geofencingService.notifyGeofenceEvent(
+                    GeofencingService.notifyGeofenceEvent(
                         "geofenceEvent",
                         mapOf(
                             "identifier" to geofence.requestId,

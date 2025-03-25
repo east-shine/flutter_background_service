@@ -63,7 +63,6 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
             receiveData(object);
         }
     };
-    private GeofencingService geofencingService;
 
     synchronized public static PowerManager.WakeLock getLock(Context context) {
         if (lockStatic == null) {
@@ -221,8 +220,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
             methodChannel = new MethodChannel(backgroundEngine.getDartExecutor().getBinaryMessenger(), "id.flutter/background_service_android_bg", JSONMethodCodec.INSTANCE);
             methodChannel.setMethodCallHandler(this);
 
-            geofencingService = new GeofencingService(this);
-            geofencingService.setMethodChannel(methodChannel);
+            GeofencingService.INSTANCE.setMethodChannel(methodChannel);
 
             dartEntrypoint = new DartExecutor.DartEntrypoint(flutterLoader.findAppBundlePath(), "package:flutter_background_service_android/flutter_background_service_android.dart", "entrypoint");
 
@@ -376,7 +374,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
                     double radius = ((Number) args.get("radius")).doubleValue();
                     String identifier = (String) args.get("identifier");
 
-                    geofencingService.registerGeofence(latitude, longitude, radius, identifier);
+                    GeofencingService.INSTANCE.registerGeofence(this, latitude, longitude, radius, identifier);
                     result.success(null);
                 } catch (Exception e) {
                     result.error("REGISTER_ERROR", e.getMessage(), null);
@@ -387,7 +385,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
             if (method.equalsIgnoreCase("removeGeofence")) {
                 try {
                     String identifier = (String) call.arguments;
-                    geofencingService.removeGeofence(identifier);
+                    GeofencingService.INSTANCE.removeGeofence(this, identifier);
                     result.success(null);
                 } catch (Exception e) {
                     result.error("REMOVE_ERROR", e.getMessage(), null);
@@ -397,7 +395,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
 
             if (method.equalsIgnoreCase("getRegisteredGeofences")) {
                 try {
-                    List<Map<String, Object>> geofences = geofencingService.getRegisteredGeofences();
+                    List<Map<String, Object>> geofences = GeofencingService.INSTANCE.getRegisteredGeofences(this);
                     result.success(geofences);
                 } catch (Exception e) {
                     result.error("GET_GEOFENCES_ERROR", e.getMessage(), null);
