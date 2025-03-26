@@ -53,11 +53,14 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     )
                     Log.d(TAG, "Geofence event for ${geofence.requestId} at location $locationData")
                     GeofencingService.notifyGeofenceEvent(
-                        "geofenceEvent",
+                        "sendData",
                         mapOf(
-                            "identifier" to geofence.requestId,
-                            "eventType" to geofenceTransitionString,
-                            "location" to locationData
+                            "method" to "geofenceEvent",
+                            "args" to mapOf(
+                                "event" to geofenceTransitionString,
+                                "identifier" to geofence.requestId,
+                                "location" to locationData
+                            )
                         )
                     )
                 }

@@ -220,8 +220,6 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
             methodChannel = new MethodChannel(backgroundEngine.getDartExecutor().getBinaryMessenger(), "id.flutter/background_service_android_bg", JSONMethodCodec.INSTANCE);
             methodChannel.setMethodCallHandler(this);
 
-            GeofencingService.INSTANCE.setMethodChannel(methodChannel);
-
             dartEntrypoint = new DartExecutor.DartEntrypoint(flutterLoader.findAppBundlePath(), "package:flutter_background_service_android/flutter_background_service_android.dart", "entrypoint");
 
             final List<String> args = new ArrayList<>();

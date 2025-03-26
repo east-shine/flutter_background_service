@@ -9,14 +9,10 @@ import androidx.core.content.edit
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
-import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
 
 object GeofencingService {
-    private var methodChannel: MethodChannel? = null
 
-    fun setMethodChannel(channel: MethodChannel) {
-        this.methodChannel = channel
-    }
 
     fun registerGeofence(
         context: Context,
@@ -100,8 +96,16 @@ object GeofencingService {
         }
     }
 
-    fun notifyGeofenceEvent(event: String, data: Map<String, Any>) {
-        methodChannel?.invokeMethod(event, data)
+    fun notifyGeofenceEvent(method: String, args: Map<String, Any>?) {
+        val data: MutableMap<String, Any?> = mutableMapOf("method" to method)
+        args?.let { data["args"] = it }
+
+        @Suppress("UNCHECKED_CAST")
+        synchronized(FlutterBackgroundServicePlugin.servicePipe) {
+            if (FlutterBackgroundServicePlugin.servicePipe.hasListener()) {
+                FlutterBackgroundServicePlugin.servicePipe.invoke(JSONObject(data as Map<Any?, Any?>))
+            }
+        }
     }
 
     private fun saveGeofence(
