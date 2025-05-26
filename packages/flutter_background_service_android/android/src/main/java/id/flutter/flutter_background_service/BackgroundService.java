@@ -121,6 +121,10 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
         stopForeground(true);
         isRunning.set(false);
 
+        if (methodChannel != null) {
+            methodChannel.setMethodCallHandler(null);
+        }
+
         if (backgroundEngine != null) {
             backgroundEngine.getServiceControlSurface().detachFromService();
             backgroundEngine.destroy();
@@ -210,7 +214,7 @@ public class BackgroundService extends Service implements MethodChannel.MethodCa
             flutterLoader.ensureInitializationComplete(getApplicationContext(), null);
 
             isRunning.set(true);
-            backgroundEngine = new FlutterEngine(this);
+            backgroundEngine = new FlutterEngine(getApplicationContext());
 
             // remove FlutterBackgroundServicePlugin (because its only for UI)
             backgroundEngine.getPlugins().remove(FlutterBackgroundServicePlugin.class);
